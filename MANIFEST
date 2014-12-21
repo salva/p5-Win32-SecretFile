@@ -1,0 +1,8 @@
+Changes
+Makefile.PL
+MANIFEST
+ppport.h
+README
+SecretFile.xs
+t/Win32-SecretFile.t
+lib/Win32/SecretFile.pm

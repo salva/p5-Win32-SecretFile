@@ -1,0 +1,6 @@
+Revision history for Perl extension Win32::SecretFile.
+
+0.01  Sun Dec 21 01:18:12 2014
+	- original version; created by h2xs 1.23 with options
+		-An Win32::SecretFile
+
