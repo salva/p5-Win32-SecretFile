@@ -13,9 +13,30 @@ our @EXPORT_OK = qw(create_secret_file);
 require XSLoader;
 XSLoader::load('Win32::SecretFile', $VERSION);
 
+use File::Spec;
+
 sub create_secret_file {
     my ($name, $data, %opts) = @_;
-    _create_secret_file($name, $data // '', 0);
+
+    if (delete $opts{local_appdata}) {
+        my $local_appdata = _local_appdata_path() // return;
+        $name = File::Spec->rel2abs($name, $local_appdata);
+    }
+    else {
+        $name = File::Spec->rel2abs($name);
+    }
+    my ($base, $path, $file) = File::Spec->splitpath($name);
+    my @path = File::Spec->splitdir($path);
+    while (@path) {
+        $base = File::Spec->join($base, shift(@path));
+        _create_directory($base);
+    }
+    warn "name: $name\n";
+    _create_secret_file($name, $data // '', 0) or return;
+    if (delete $opts{short_path}) {
+        return _short_path($name) // $name;
+    }
+    return $name;
 }
 
 1;

@@ -7,6 +7,7 @@
 
 #include <windows.h>
 #include <sddl.h>
+#include <shlobj.h>
 #include <Lmcons.h>
 
 void
@@ -44,7 +45,7 @@ set_errno(pTHX) {
     }
 }
 
-WCHAR empty_wstr[] = { 0, };
+wchar_t empty_wstr[] = { 0, };
 
 wchar_t *
 SvPVwchar_nolen(pTHX_ SV *sv) {
@@ -118,6 +119,72 @@ _create_secret_file(pTHX_ SV *name_sv, SV *data_sv, UV flags) {
     return &PL_sv_undef;
 }
 
+SV *
+newSVwchar(pTHX_ wchar_t *wstr, STRLEN wlen, UINT code_page) {
+    int len = WideCharToMultiByte(CP_UTF8,
+                                  0,
+                                  wstr, (wlen ? wlen : -1),
+                                  NULL, 0,
+                                  NULL, NULL);
+    if (len) {
+        SV *sv = sv_2mortal(newSV(len));
+        SvPOK_on(sv);
+        if (code_page == CP_UTF8) SvUTF8_on(sv);
+        SvCUR_set(sv, len - 1);
+        if (WideCharToMultiByte(code_page,
+                                0,
+                                wstr, (wlen ? wlen : -1),
+                                SvPVX(sv), len + 1,
+                                NULL, NULL) == len) {
+            return SvREFCNT_inc(sv);
+        }
+        Perl_warn(aTHX_ "WideCharToMultiByte failed 2");
+    }
+    Perl_warn(aTHX_ "WideCharToMultiByte failed");
+    return &PL_sv_undef;
+}
+
+SV *
+_local_appdata_path(pTHX) {
+    wchar_t buffer[MAX_PATH + 1];
+    if(SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_LOCAL_APPDATA,
+                                  NULL, SHGFP_TYPE_CURRENT, buffer))) {
+        STRLEN wlen = wcslen(buffer);
+        SV *sv = newSVwchar(aTHX_ buffer, 0, CP_UTF8);
+        STRLEN len;
+        char *pv = SvPV(sv, len);
+        Perl_warn(aTHX_ "LOCAL_APPDATA: |%s| [%d -> %d]", pv, wlen, len);
+        return sv;
+    }
+    Perl_warn(aTHX_ "local_appdata_path failed");
+    return &PL_sv_undef;
+}
+
+SV *
+_short_path(pTHX_ SV *path) {
+    wchar_t *wpath = SvPVwchar_nolen(aTHX_ path);
+    int len = GetShortPathNameW(wpath, NULL, 0);
+    if (len) {
+        wchar_t *buffer;
+        Newx(buffer, len + 1, wchar_t);
+        SAVEFREEPV(buffer);
+        int len2 = GetShortPathNameW(wpath, buffer, len);
+        if (len2 + 1 == len ) {
+            Perl_warn(aTHX_ "short path len: %d", len);
+            return newSVwchar(aTHX_ buffer, len, CP_ACP);
+        }
+        else {
+            Perl_warn(aTHX_ "GetShortPathNameW lies %d => %d", len, len2);
+        }
+    }
+    else 
+        Perl_warn(aTHX_ "GetShortPathNameW failed %d", GetLastError());
+
+    set_errno(aTHX);
+    return &PL_sv_undef;
+}
+
+
 MODULE = Win32::SecretFile		PACKAGE = Win32::SecretFile		
 
 SV *
@@ -127,5 +194,35 @@ _create_secret_file(file, data, flags)
     UV flags
 CODE:
     RETVAL = _create_secret_file(aTHX_ file, data, flags);
+OUTPUT:
+    RETVAL
+
+SV *
+_local_appdata_path()
+CODE:
+    RETVAL = _local_appdata_path(aTHX);
+OUTPUT:
+    RETVAL
+
+SV *
+_create_directory(path) 
+    SV *path
+INIT:
+    wchar_t *wdir;
+CODE:
+    if ((wdir = SvPVwchar_nolen(aTHX_ path)) &&
+        CreateDirectoryW(wdir, NULL))
+        RETVAL = &PL_sv_yes;
+    else {
+        set_errno(aTHX);
+        RETVAL = &PL_sv_undef;
+    }
+OUTPUT:
+    RETVAL
+
+SV *
+_short_path(SV *path)
+CODE:
+    RETVAL = _short_path(aTHX_ path);
 OUTPUT:
     RETVAL
