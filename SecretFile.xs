@@ -10,6 +10,11 @@
 #include <shlobj.h>
 #include <Lmcons.h>
 
+#define CSFF_OVERWRITE 1
+#define CSFF_TEMPORARY 2
+#define CSFF_HIDDEN    4
+#define CSFF_ENCRYPTED 8
+
 void
 set_errno(pTHX) {
     DWORD err = GetLastError();
@@ -61,13 +66,13 @@ SvPVwchar_nolen(pTHX_ SV *sv) {
             out[out_len] = 0;
             return out;
         }
+        Perl_croak(aTHX_ "Internal error: MultiByteToWideChar lies, fix your OS!");
     }
     return NULL;
 }
 
 SV *
 _create_secret_file(pTHX_ SV *name_sv, SV *data_sv, UV flags) {
-    static const char ssd_template[] = "O:%sD:P(A;;FA;;;%s)";
     char user_name[UNLEN+1];
     DWORD user_name_size = sizeof(user_name);
     if (GetUserNameA(user_name, &user_name_size)) {
@@ -83,15 +88,21 @@ _create_secret_file(pTHX_ SV *name_sv, SV *data_sv, UV flags) {
             if (ConvertSidToStringSidA(sid, &sid_as_string)) {
                 PSECURITY_DESCRIPTOR sd = NULL;
                 DWORD sd_size;
-                SV *ssd_as_sv = sv_2mortal(newSVpvf(ssd_template, sid_as_string, sid_as_string));
+                char *ssd_as_string = SvPV_nolen(sv_2mortal(newSVpvf("O:%sD:P(A;;FA;;;%s)",
+                                                                   sid_as_string, sid_as_string)));
                 LocalFree(sid_as_string);
-                if (ConvertStringSecurityDescriptorToSecurityDescriptorA(SvPV_nolen(ssd_as_sv),
+                if (ConvertStringSecurityDescriptorToSecurityDescriptorA(ssd_as_string,
                                                                          SDDL_REVISION_1,
                                                                          &sd, &sd_size)) {
                     SECURITY_ATTRIBUTES sa = { sizeof(SECURITY_ATTRIBUTES), sd, 0 };
+                    DWORD creation_disposition = ((flags & CSFF_OVERWRITE) ? CREATE_ALWAYS : CREATE_NEW);
+                    DWORD flags_and_attributes = (((flags & CSFF_TEMPORARY) ? FILE_ATTRIBUTE_TEMPORARY : 0) |
+                                                  ((flags & CSFF_HIDDEN   ) ? FILE_ATTRIBUTE_HIDDEN    : 0) |
+                                                  ((flags & CSFF_ENCRYPTED) ? FILE_ATTRIBUTE_ENCRYPTED : 0));
                     HANDLE fh = CreateFileW(SvPVwchar_nolen(aTHX_ name_sv),
-                                            GENERIC_WRITE, FILE_SHARE_READ, &sa, CREATE_ALWAYS,
-                                            FILE_ATTRIBUTE_TEMPORARY, NULL);
+                                            GENERIC_WRITE, FILE_SHARE_READ, &sa,
+                                            creation_disposition,
+                                            flags, NULL);
                     if (fh != INVALID_HANDLE_VALUE) {
                         STRLEN len;
                         char *data = SvPVbyte(data_sv, len);
@@ -138,9 +149,8 @@ newSVwchar(pTHX_ wchar_t *wstr, STRLEN wlen, UINT code_page) {
                                 NULL, NULL) == len) {
             return SvREFCNT_inc(sv);
         }
-        Perl_warn(aTHX_ "WideCharToMultiByte failed 2");
+        Perl_croak(aTHX_ "Internal error: WideCharToMultiByte lies, fix your OS!");
     }
-    Perl_warn(aTHX_ "WideCharToMultiByte failed");
     return &PL_sv_undef;
 }
 
@@ -153,10 +163,8 @@ _local_appdata_path(pTHX) {
         SV *sv = newSVwchar(aTHX_ buffer, 0, CP_UTF8);
         STRLEN len;
         char *pv = SvPV(sv, len);
-        Perl_warn(aTHX_ "LOCAL_APPDATA: |%s| [%d -> %d]", pv, wlen, len);
         return sv;
     }
-    Perl_warn(aTHX_ "local_appdata_path failed");
     return &PL_sv_undef;
 }
 
@@ -168,24 +176,17 @@ _short_path(pTHX_ SV *path) {
         wchar_t *buffer;
         Newx(buffer, len + 1, wchar_t);
         SAVEFREEPV(buffer);
-        int len2 = GetShortPathNameW(wpath, buffer, len);
-        if (len2 + 1 == len ) {
-            Perl_warn(aTHX_ "short path len: %d", len);
+        if (GetShortPathNameW(wpath, buffer, len) == len - 1)
             return newSVwchar(aTHX_ buffer, len, CP_ACP);
-        }
-        else {
-            Perl_warn(aTHX_ "GetShortPathNameW lies %d => %d", len, len2);
-        }
+        Perl_croak(aTHX_ "Internal error: GetShortPathNameW lies, fix your OS!");
     }
-    else 
-        Perl_warn(aTHX_ "GetShortPathNameW failed %d", GetLastError());
-
     set_errno(aTHX);
     return &PL_sv_undef;
 }
 
 
 MODULE = Win32::SecretFile		PACKAGE = Win32::SecretFile		
+PROTOTYPES: DISABLE
 
 SV *
 _create_secret_file(file, data, flags)
