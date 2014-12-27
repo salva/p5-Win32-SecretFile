@@ -116,10 +116,10 @@ The module exports the following function:
 =item $path = create_secret_file($filename, $data, %opts)
 
 Creates the file with the restricted set of permissions and saves the
-given C<$data> inside.
+given data C<$data> inside.
 
-The functions returns the final absolute file path or undef in case of
-failure (<$^E> can be inspected then to discover the cause).
+The function returns the final absolute file path. In case of failure
+it returns undef (<$^E> can be inspected then to discover the cause).
 
 The following optional arguments are accepted:
 
@@ -136,7 +136,7 @@ Defaults to false.
 
 =item make_path => $bool
 
-The function creates any non-existent directory on the target
+The function creates any non-existent directories on the target
 path. Defaults to true.
 
 =item overwrite => $bool
@@ -171,10 +171,10 @@ Sets the encrypted attributed on the created file. Defaults to false.
 
 =head1 SEE ALSO
 
-This module is a spin-off of L<Net::SSH::Any> where it is used to pass
-passwords to slave commands.
+This module was a spin-off of L<Net::SSH::Any> where it is used to
+pass passwords to slave commands.
 
-Thes thread in Perlmonks where it was discussed:
+The thread in Perlmonks where it was discussed:
 L<http://perlmonks.org/?node_id=1110748>
 
 See also the MSDN documentation for
@@ -185,7 +185,7 @@ flags.
 =head1 COPYRIGHT AND LICENSE
 
 Copyright (C) 2014 by Salvador Fandiño E<lt>sfandino@yahoo.comE<gt>
-Copyright (C) 2014 by BrowserUK
+Copyright (C) 2014 by BrowserUk
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.21.7 or,
