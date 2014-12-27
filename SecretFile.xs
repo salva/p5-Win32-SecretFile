@@ -1,3 +1,9 @@
+#ifdef _MSV_VER
+/* Set backward compatibility to WinXP */
+#define WINVER 0x501
+#define _WIN32_WINNT 0x501
+#endif
+
 #define PERL_NO_GET_CONTEXT
 #include "EXTERN.h"
 #include "perl.h"
