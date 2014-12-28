@@ -115,11 +115,13 @@ The module exports the following function:
 
 =item $path = create_secret_file($filename, $data, %opts)
 
-Creates the file with the restricted set of permissions and saves the
-given data C<$data> inside.
+Creates at the given position C<$filename> a file which only the
+current user has permissions to access and saves the contents of $data
+inside.
 
 The function returns the final absolute file path. In case of failure
-it returns undef (<$^E> can be inspected then to discover the cause).
+it returns undef (E<$^E> can be inspected then to discover the cause
+of failure).
 
 The following optional arguments are accepted:
 
@@ -184,7 +186,7 @@ flags.
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2014 by Salvador Fandiño E<lt>sfandino@yahoo.comE<gt>
+Copyright (C) 2014 by Salvador FandiE<ntilde>o E<lt>sfandino@yahoo.comE<gt>
 Copyright (C) 2014 by BrowserUk
 
 This library is free software; you can redistribute it and/or modify
