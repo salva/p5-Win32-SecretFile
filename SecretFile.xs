@@ -1,5 +1,5 @@
 #ifdef _MSV_VER
-/* Set backward compatibility to WinXP */
+/* Set backwards compatibility to WinXP */
 #define WINVER 0x501
 #define _WIN32_WINNT 0x501
 #endif
