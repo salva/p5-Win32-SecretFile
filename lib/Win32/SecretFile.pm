@@ -120,7 +120,7 @@ current user has permissions to access and saves the contents of $data
 inside.
 
 The function returns the final absolute file path. In case of failure
-it returns undef (E<$^E> can be inspected then to discover the cause
+it returns undef (C<$^E> can be inspected then to discover the cause
 of failure).
 
 The following optional arguments are accepted:
