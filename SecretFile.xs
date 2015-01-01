@@ -108,13 +108,13 @@ _create_secret_file(pTHX_ SV *name_sv, SV *data_sv, UV flags) {
                     HANDLE fh = CreateFileW(SvPVwchar_nolen(aTHX_ name_sv),
                                             GENERIC_WRITE, FILE_SHARE_READ, &sa,
                                             creation_disposition,
-                                            flags, NULL);
+                                            flags_and_attributes, NULL);
                     if (fh != INVALID_HANDLE_VALUE) {
                         STRLEN len;
                         char *data = SvPVbyte(data_sv, len);
                         while (len > 0) {
                             DWORD written;
-                            if (WriteFile(fh, data, len, &written, NULL)) {
+                            if (WriteFile(fh, data, (DWORD)len, &written, NULL)) {
                                 data += written;
                                 len -= written;
                             }
@@ -140,7 +140,7 @@ SV *
 newSVwchar(pTHX_ wchar_t *wstr, STRLEN wlen, UINT code_page) {
     int len = WideCharToMultiByte(CP_UTF8,
                                   0,
-                                  wstr, (wlen ? wlen : -1),
+                                  wstr, (DWORD)(wlen ? wlen : -1),
                                   NULL, 0,
                                   NULL, NULL);
     if (len) {
@@ -150,7 +150,7 @@ newSVwchar(pTHX_ wchar_t *wstr, STRLEN wlen, UINT code_page) {
         SvCUR_set(sv, len - 1);
         if (WideCharToMultiByte(code_page,
                                 0,
-                                wstr, (wlen ? wlen : -1),
+                                wstr, (DWORD)(wlen ? wlen : -1),
                                 SvPVX(sv), len + 1,
                                 NULL, NULL) == len) {
             return SvREFCNT_inc(sv);
