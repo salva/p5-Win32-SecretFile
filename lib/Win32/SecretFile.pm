@@ -187,6 +187,7 @@ flags.
 =head1 COPYRIGHT AND LICENSE
 
 Copyright (C) 2014-2015 by Salvador FandiE<ntilde>o E<lt>sfandino@yahoo.comE<gt>
+
 Copyright (C) 2014 by BrowserUk
 
 This library is free software; you can redistribute it and/or modify
